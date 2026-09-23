@@ -1,0 +1,7 @@
+__pycache__/
+input/
+cloud_input/
+processed/
+approved/
+rejected/
+*.json
