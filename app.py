@@ -1,17 +1,21 @@
-from flask import Flask, render_template, send_from_directory, redirect, url_for
+from flask import Flask, render_template, send_from_directory, redirect, url_for, request
 import os
 import shutil
 import json
+
+from processor import process_photo
 
 app = Flask(__name__)
 
 PROCESSED_FOLDER = "processed"
 APPROVED_FOLDER = "approved"
 REJECTED_FOLDER = "rejected"
+UPLOAD_FOLDER = "cloud_input"
 
 os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 os.makedirs(APPROVED_FOLDER, exist_ok=True)
 os.makedirs(REJECTED_FOLDER, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 @app.route("/")
@@ -45,7 +49,6 @@ def home():
                 "status": analysis["status"]
             })
 
-    # Put the sharpest photos first
     photos.sort(
         key=lambda photo: photo["sharpness"]
         if isinstance(photo["sharpness"], (int, float))
@@ -54,6 +57,27 @@ def home():
     )
 
     return render_template("index.html", photos=photos)
+
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    if "photo" not in request.files:
+        return "No photo uploaded", 400
+
+    file = request.files["photo"]
+
+    if file.filename == "":
+        return "No photo selected", 400
+
+    filename = os.path.basename(file.filename)
+
+    input_path = os.path.join(UPLOAD_FOLDER, filename)
+
+    file.save(input_path)
+
+    process_photo(input_path)
+
+    return redirect(url_for("home"))
 
 
 @app.route("/photo/<filename>")
