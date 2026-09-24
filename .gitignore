@@ -5,3 +5,5 @@ processed/
 approved/
 rejected/
 *.json
+ftps-cert.pem
+ftps-key.pem
