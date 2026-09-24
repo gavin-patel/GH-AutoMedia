@@ -6,7 +6,11 @@ import numpy as np
 
 
 def calculate_sharpness(image):
-    gray = np.asarray(image.convert("L"))
+    if len(image.shape) == 3:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = image
+
     return cv2.Laplacian(gray, cv2.CV_64F).var()
 
 
@@ -26,13 +30,26 @@ def process_photo(input_path):
 
     print("Processing:", filename)
 
-    image = Image.open(input_path)
-    if image.format == "JPEG":
-        image.draft("RGB", (2048, 2048))
-    image.load()
+    with Image.open(input_path) as source:
+        max_dimension = max(source.size)
+
+    if max_dimension > 8192:
+        decode_flag = cv2.IMREAD_REDUCED_COLOR_8
+    elif max_dimension > 4096:
+        decode_flag = cv2.IMREAD_REDUCED_COLOR_4
+    elif max_dimension > 2048:
+        decode_flag = cv2.IMREAD_REDUCED_COLOR_2
+    else:
+        decode_flag = cv2.IMREAD_COLOR
+
+    decoded_image = cv2.imread(input_path, decode_flag)
+    if decoded_image is None:
+        raise ValueError("Unable to decode the uploaded image")
+
+    sharpness = calculate_sharpness(decoded_image)
+    image = Image.fromarray(cv2.cvtColor(decoded_image, cv2.COLOR_BGR2RGB))
     image.thumbnail((2048, 2048), Image.Resampling.LANCZOS)
 
-    sharpness = calculate_sharpness(image)
     print("Sharpness score:", round(sharpness, 2))
 
     status = "Sharp" if sharpness >= 100 else "Possibly Blurry"
