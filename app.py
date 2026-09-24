@@ -73,9 +73,11 @@ def upload():
 
     input_path = os.path.join(UPLOAD_FOLDER, filename)
 
-    file.save(input_path)
-
-    process_photo(input_path)
+    try:
+        file.save(input_path)
+        process_photo(input_path)
+    except Exception as error:
+        return f"Photo processing failed: {error}", 500
 
     return redirect(url_for("home"))
 
@@ -109,5 +111,6 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=8080,
-        debug=True
+        debug=False,
+        use_reloader=False
     )
