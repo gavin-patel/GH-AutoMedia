@@ -3,6 +3,7 @@ import os
 import cv2
 import json
 import numpy as np
+from io import BytesIO
 
 
 def calculate_sharpness(image):
@@ -86,14 +87,16 @@ def process_raw_photo(input_path):
     filename = os.path.basename(input_path)
     print("Processing CR3 preview:", filename)
     with rawpy.imread(input_path) as raw:
-        decoded_image = raw.postprocess(
-            use_camera_wb=True,
-            half_size=True,
-            output_bps=8,
-            no_auto_bright=True,
+        thumbnail = raw.extract_thumb()
+
+    if thumbnail.format.name != "JPEG":
+        raise ValueError(
+            f"CR3 embedded preview format is unsupported: {thumbnail.format}"
         )
 
-    image = Image.fromarray(decoded_image).convert("RGB")
+    with Image.open(BytesIO(thumbnail.data)) as preview:
+        image = preview.convert("RGB")
+        image.load()
     image.thumbnail((2048, 2048), Image.Resampling.LANCZOS)
     rgb_image = np.asarray(image)
     bgr_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
