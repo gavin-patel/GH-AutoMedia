@@ -14,7 +14,7 @@ def calculate_sharpness(image):
     return cv2.Laplacian(gray, cv2.CV_64F).var()
 
 
-def process_photo(input_path):
+def _save_processed_image(image, filename, sharpness):
     final_width = 1080
     final_height = 1920
     border = 20
@@ -24,30 +24,9 @@ def process_photo(input_path):
     output_folder = "processed"
     os.makedirs(output_folder, exist_ok=True)
 
-    filename = os.path.basename(input_path)
     name = os.path.splitext(filename)[0]
     output_path = os.path.join(output_folder, name + "_story.jpg")
 
-    print("Processing:", filename)
-
-    with Image.open(input_path) as source:
-        max_dimension = max(source.size)
-
-    if max_dimension > 8192:
-        decode_flag = cv2.IMREAD_REDUCED_COLOR_8
-    elif max_dimension > 4096:
-        decode_flag = cv2.IMREAD_REDUCED_COLOR_4
-    elif max_dimension > 2048:
-        decode_flag = cv2.IMREAD_REDUCED_COLOR_2
-    else:
-        decode_flag = cv2.IMREAD_COLOR
-
-    decoded_image = cv2.imread(input_path, decode_flag)
-    if decoded_image is None:
-        raise ValueError("Unable to decode the uploaded image")
-
-    sharpness = calculate_sharpness(decoded_image)
-    image = Image.fromarray(cv2.cvtColor(decoded_image, cv2.COLOR_BGR2RGB))
     image.thumbnail((2048, 2048), Image.Resampling.LANCZOS)
 
     print("Sharpness score:", round(sharpness, 2))
@@ -74,3 +53,49 @@ def process_photo(input_path):
 
     print("Created:", output_path)
     print("Analysis saved:", analysis_path)
+
+
+def process_photo(input_path):
+    filename = os.path.basename(input_path)
+    print("Processing:", filename)
+
+    with Image.open(input_path) as source:
+        max_dimension = max(source.size)
+
+    if max_dimension > 8192:
+        decode_flag = cv2.IMREAD_REDUCED_COLOR_8
+    elif max_dimension > 4096:
+        decode_flag = cv2.IMREAD_REDUCED_COLOR_4
+    elif max_dimension > 2048:
+        decode_flag = cv2.IMREAD_REDUCED_COLOR_2
+    else:
+        decode_flag = cv2.IMREAD_COLOR
+
+    decoded_image = cv2.imread(input_path, decode_flag)
+    if decoded_image is None:
+        raise ValueError("Unable to decode the uploaded image")
+
+    sharpness = calculate_sharpness(decoded_image)
+    image = Image.fromarray(cv2.cvtColor(decoded_image, cv2.COLOR_BGR2RGB))
+    _save_processed_image(image, filename, sharpness)
+
+
+def process_raw_photo(input_path):
+    import rawpy
+
+    filename = os.path.basename(input_path)
+    print("Processing CR3 preview:", filename)
+    with rawpy.imread(input_path) as raw:
+        decoded_image = raw.postprocess(
+            use_camera_wb=True,
+            half_size=True,
+            output_bps=8,
+            no_auto_bright=True,
+        )
+
+    image = Image.fromarray(decoded_image).convert("RGB")
+    image.thumbnail((2048, 2048), Image.Resampling.LANCZOS)
+    rgb_image = np.asarray(image)
+    bgr_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
+    sharpness = calculate_sharpness(bgr_image)
+    _save_processed_image(image, filename, sharpness)

@@ -7,8 +7,10 @@ RUN echo "Building ${BUILD_REVISION}"
 
 COPY . .
 
-RUN pip install --no-cache-dir flask pillow opencv-python-headless watchdog
+RUN pip install --no-cache-dir flask pillow opencv-python-headless watchdog pyftpdlib pyopenssl rawpy
 
 EXPOSE 8080
+EXPOSE 2121
+EXPOSE 30000-30009
 
-CMD ["python", "app.py"]
+CMD ["python", "bootstrap.py"]
